@@ -80,7 +80,7 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
         constraints.fill = GridBagConstraints.VERTICAL;
         gridbag.setConstraints(scrollBarY, constraints);
         scrollBarY.addAdjustmentListener(this);
-        scrollBarY.setVisible(true);
+        scrollBarY.setVisible(false);
         add(scrollBarY);
         scrollBarX = new Scrollbar(Scrollbar.HORIZONTAL, 1, 0, 0, 51);
         scrollBarX.setBlockIncrement(1);
@@ -118,27 +118,21 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
 		
 		
-		float[] H_xd2 = {1, -2, 1};// MakeGaussKernel1dd2(sigma_x);
-		float[] H_yd2 = {1, -2, 1}; // MakeGaussKernel1dd2(sigma_y);
+		float[] H_xd2 = {1, -2, 1}; //MakeGaussKernel1dd2(sigma_x);
+		float[] H_yd2 = {1, -2, 1}; //MakeGaussKernel1dd2(sigma_y);
 		FloatProcessor Ix = (FloatProcessor) tmpProcessor.duplicate();
 		FloatProcessor Iy = (FloatProcessor) tmpProcessor.duplicate();
 		MyConvolve(Iy, H_yd2, 1, H_yd2.length);
 		MyConvolve(Ix, H_xd2, H_xd2.length, 1);
 		
-		float[] Apix = (float[])Ix.getPixels(); 
-		float[] Bpix = (float[])Iy.getPixels();
 		int mw = Ix.getWidth();
 		int mh = Ix.getHeight();
 		for (int y = 0; y < mh; y++)
 		{
 			for (int x = 0; x < mw; x++)
 			{
-				int i = y*mw+x;
-				float a = Apix[i], b = Bpix[i];
-				
-				float v = a+b;
-				
-				if (v < 10 && v > -10) 
+				int v = (int)(Ix.getPixelValue(x, y)+Iy.getPixelValue(x, y));
+				if (v == 0) 
 				{
 					tmpProcessor.putPixelValue(x, y, 255);
 				}
@@ -159,11 +153,12 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 		
 		if (e.getSource() == scrollBarX)
 		{
-			this.setImage(processingImg);
 			sigma_x = (double)e.getValue()/scale;
-			String title = "sigma= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
+			sigma_y = sigma_x;
+			String title = "sigma x= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
 			ProcessImage();
-			super.ic.repaint();
+			this.setImage(processingImg);
+			repaint();
 			setTitle(title);
 			pack();
 		}
@@ -173,7 +168,7 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 			sigma_y = (double)e.getValue()/scale;
 			String title = "sigma= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
 			ProcessImage();
-			super.ic.repaint();
+			repaint();
 			setTitle(title);
 			pack();
 		}
@@ -192,7 +187,7 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 	
 	float[] MakeGaussKernel1d (double sigma)
 	{
-		int center = (int) (3.0*sigma);
+		int center = (int) 5;
 		float[] kernel = new float[2*center+1];
 		double sigma2 = sigma*sigma;
 		for (int i = 0; i < kernel.length; i++)
@@ -217,7 +212,7 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 	
 	float[] MakeGaussKernel1dd1 (double sigma)
 	{
-		int center = (int) (3.0*sigma);
+		int center = (int) 5;
 		float[] kernel = new float[2*center+1];
 		double sigma2 = sigma*sigma;
 		double sigma4 = sigma2*sigma2;
@@ -243,7 +238,7 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 	
 	float[] MakeGaussKernel1dd2 (double sigma)
 	{
-		int center = (int) (3.0*sigma);
+		int center = (int) 5;
 		float[] kernel = new float[2*center+1];
 		double sigma2 = sigma*sigma;
 		double sigma4 = sigma2*sigma2;
@@ -252,22 +247,13 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 			double r = center - i;
 			kernel[i] = (float) ((-1)*Math.exp(r*r*(-1)/(2*sigma2))*(1-r*r/sigma2)/(2*3.14*sigma4));
 		}
-		float sum = 0;
-		
-		// Normalize the kernel
 		for (int i = 0; i < kernel.length; i++)
 		{
-			sum += kernel[i];
-		}
-
-		for (int i = 0; i < kernel.length; i++)
-		{
-			kernel[i] /= sum;
+			kernel[i] *= 2000;
 		}
 		return kernel;
 	}
 	
-	// Convolve the Image using kernel and wrap method
 	void MyConvolve(ImageProcessor ip, float[] kernel, int kw, int kh)
 	{
 		int width = ip.getWidth();
@@ -287,6 +273,14 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 		boolean edgePixel;
 		int xedge = width-uc;
 		int yedge = height-vc;
+		float scale = 1.0f;
+		float s = 0;
+		for (int n = 0; n < kernel.length; n++)
+		{
+			s += kernel[n];
+			if (s != 0)
+				scale = 1/s;
+		}
 		for (int y=y1; y<y2; y++) {
 			
 			for (int x=x1; x<x2; x++) {
@@ -302,7 +296,7 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 							sum += pixels2[offset+u]*kernel[i++];
 					}
 		    	}
-				pixels[x+y*width] = (float)(sum);
+				pixels[x+y*width] = (float)(sum*scale);
 			}
     	}
 	}

@@ -48,9 +48,10 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 	double sigma_y;
 	double w;
 	double magnification;
+	int threshold = 10;
 	private Scrollbar scrollBarX;
 	private Scrollbar scrollBarY;
-	private Scrollbar scrollBarW;
+	private Scrollbar scrollBarT;
 	private ImagePlus processingImg;
 	private ImagePlus originImg;
 	private double scale;
@@ -80,7 +81,7 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
         constraints.fill = GridBagConstraints.VERTICAL;
         gridbag.setConstraints(scrollBarY, constraints);
         scrollBarY.addAdjustmentListener(this);
-        scrollBarY.setVisible(true);
+        scrollBarY.setVisible(false);
         add(scrollBarY);
         scrollBarX = new Scrollbar(Scrollbar.HORIZONTAL, 1, 0, 0, 51);
         scrollBarX.setBlockIncrement(1);
@@ -92,15 +93,15 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
         scrollBarX.setVisible(true);
         add(scrollBarX);
         
-        scrollBarW = new Scrollbar(Scrollbar.HORIZONTAL, 0, 0, -10, 10+1);
-        scrollBarW.setBlockIncrement(1);
+        scrollBarT = new Scrollbar(Scrollbar.HORIZONTAL, 0, 0, 1, 21);
+        scrollBarT.setBlockIncrement(1);
         constraints.gridx = 0;
         constraints.gridy = 2;
         constraints.fill = GridBagConstraints.HORIZONTAL;
-        gridbag.setConstraints(scrollBarW, constraints);
-        scrollBarW.addAdjustmentListener(this);
-        scrollBarW.setVisible(false);
-        add(scrollBarW);
+        gridbag.setConstraints(scrollBarT, constraints);
+        scrollBarT.addAdjustmentListener(this);
+        scrollBarT.setVisible(true);
+        add(scrollBarT);
         pack();
 	}
 
@@ -117,32 +118,31 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		MyConvolve(tmpProcessor, H_y, 1, H_y.length);	// In here involves the Wrap Method
 		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
 		
-		float[] H_xd1 = {-0.5f, 0, 0.5f};// MakeGaussKernel1dd2(sigma_x);
-		float[] H_yd1 = {-0.5f, 0, 0.5f}; // MakeGaussKernel1dd2(sigma_y);
+		float[] H_xd1 = {-0.5f, 0, 0.5f};// MakeGaussKernel1dd1(sigma_x);
+		float[] H_yd1 = {-0.5f, 0, 0.5f}; // MakeGaussKernel1dd1(sigma_y);
 		FloatProcessor Ix = (FloatProcessor)tmpProcessor.duplicate();
 		FloatProcessor Iy = (FloatProcessor)tmpProcessor.duplicate();
 		MyConvolve(Iy, H_yd1, 1, H_yd1.length);
 		MyConvolve(Ix, H_xd1, H_xd1.length, 1);
-		float[] Apix = (float[])Ix.getPixels();
-		float[] Bpix = (float[])Iy.getPixels();
+
 		for (int y = 0; y < Ix.getHeight(); y++)
 		{
 			for (int x = 0; x < Iy.getWidth(); x++)
 			{
-				float v = Apix[y*Ix.getWidth()+x]+Bpix[y*Ix.getWidth()+x];
-				float v0 = (float) Math.sqrt(v);
-				v0 *= 10;
-				if (v0 >= 10)
-					v0 = 255;
+				float v = Math.abs(Ix.getPixelValue(x, y))+Math.abs(Iy.getPixelValue(x, y));
+				if (v >= threshold)
+					v = 255;
 				else
-					v0 = 0;
-				tmpProcessor.putPixelValue(x, y, v0);
+					v = 0;
+				tmpProcessor.putPixelValue(x, y, v);
 			}
 		}
 		
 		processingImg = originImg.duplicate();
 		FloatProcessor processingProcessor1 = (FloatProcessor) processingImg.getProcessor().convertToFloat();
-
+		
+		H_x = MakeGaussKernel1d(sigma_x);
+		H_y = MakeGaussKernel1d(sigma_y);
 		FloatProcessor tmpProcessor1 = (FloatProcessor) processingProcessor1.duplicate();
 		
 		MyConvolve(tmpProcessor1, H_y, 1, H_y.length);	// In here involves the Wrap Method
@@ -155,21 +155,17 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		Iy = (FloatProcessor) tmpProcessor1.duplicate();
 		MyConvolve(Iy, H_yd2, 1, H_yd2.length);
 		MyConvolve(Ix, H_xd2, H_xd2.length, 1);
-		
-		Apix = (float[])Ix.getPixels(); 
-		Bpix = (float[])Iy.getPixels();
+
 		int mw = Ix.getWidth();
 		int mh = Ix.getHeight();
 		for (int y = 0; y < mh; y++)
 		{
 			for (int x = 0; x < mw; x++)
 			{
-				int i = y*mw+x;
-				float a = Apix[i], b = Bpix[i];
+				float a = Ix.getPixelValue(x, y), b = Iy.getPixelValue(x, y);
+				int v = (int)(a+b);
 				
-				float v = a+b;
-				
-				if (v < 10 && v > -10) 
+				if (v == 0) 
 				{
 					tmpProcessor1.putPixelValue(x, y, 0);
 				}
@@ -182,7 +178,6 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		
 		ImagePlus i1 = new ImagePlus("i1", tmpProcessor);
 		ImagePlus i2 = new ImagePlus("i2", tmpProcessor1);
-
 		ImageProcessor tmpp = originImg.getProcessor().duplicate();
 		for (int y = 0; y < Ix.getHeight(); y++)
 		{
@@ -208,10 +203,11 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		
 		if (e.getSource() == scrollBarX)
 		{
-			this.setImage(processingImg);
 			sigma_x = (double)e.getValue()/scale;
-			String title = "sigma= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
+			sigma_y = sigma_x;
+			String title = "sigma x= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y)+" Threshold="+Integer.toString(threshold);
 			ProcessImage();
+			this.setImage(processingImg);
 			super.ic.repaint();
 			setTitle(title);
 			pack();
@@ -228,10 +224,11 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		}
 		else 
 		{
-			this.setImage(processingImg);
-			w = (double)e.getValue()/scale;
-			String title = "sigma= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
+			
+			threshold = (int) (e.getValue()/scale);
+			String title = "sigma x= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y)+"Threshold="+Integer.toString(threshold);
 			ProcessImage();
+			this.setImage(processingImg);
 			super.ic.repaint();
 			setTitle(title);
 			pack();

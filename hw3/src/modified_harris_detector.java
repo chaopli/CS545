@@ -252,41 +252,29 @@ class HarrisCornerDetector {
 	float GetContrast(ImageProcessor ip){
 		float contrast = 0;
 		float c = 0;
-		
+		float sum = 0;
 		int w = ip.getWidth();
 		int h = ip.getHeight();
 		
 		
 		
-		for(int i = 0 ; i < w; i ++)
-			for(int j =0; j < h; j ++){
-				int a,b;
-				if(i != 0){
-					a = ip.getPixel(i, j);
-					b = ip.getPixel(i-1, j);
-					c = c+(float)((a - b) * (a - b));
-				}
-					
-				if(i != w-1){
-					a = ip.getPixel(i, j);
-					b = ip.getPixel(i+1, j);
-					c = c+(float)((a - b) * (a - b));
-				}
-				
-				if(j != 0){
-					a = ip.getPixel(i, j);
-					b = ip.getPixel(i, j-1);
-					c = c+(float)((a - b) * (a - b));
-				}
-				
-				if(j != h - 1){
-					a = ip.getPixel(i, j+1);
-					b = ip.getPixel(i, j+1);
-					c = c+(float)((a - b) * (a - b));
-				}
+		for(int y = 0 ; y < h; y++)
+			for(int x =0; x < w; x++){
+				sum += ip.getPixelValue(x, y);
 			}
+		int num = w*h;
+		float ave = sum /(float) num;
+		sum = 0;
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				float deltaI2 = (ip.getPixelValue(x, y)-ave)*(ip.getPixelValue(x, y)-ave);
+				sum += deltaI2;
+			}
+		}
 		
-		contrast = c * 1.0f /(4*(w-2)*(h-2)+2*(w-2)*3+2*(h-2)*3+4*2);
+		contrast = (float)Math.sqrt(sum/num);
 		return contrast;
 	}
 } // end of class HarrisCornerDetector
@@ -300,9 +288,9 @@ public class modified_harris_detector implements PlugInFilter {
 		// TODO Auto-generated method stub
 		HarrisCornerDetector hcd = new HarrisCornerDetector(ip);
 		float contrast = hcd.GetContrast(ip);
-		if(contrast > 30)
-			hcd.SetThreshold(300000);
-		else if (contrast < 5 )
+		if(contrast > 60)
+			hcd.SetThreshold(50000);
+		else if (contrast < 45 )
 			hcd.SetThreshold(10000);
 		hcd.findCorners();
 		ImageProcessor result = hcd.showCornerPoints(ip);

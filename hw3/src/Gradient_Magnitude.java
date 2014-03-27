@@ -80,7 +80,7 @@ class GMWindow extends ImageWindow implements AdjustmentListener
         constraints.fill = GridBagConstraints.VERTICAL;
         gridbag.setConstraints(scrollBarY, constraints);
         scrollBarY.addAdjustmentListener(this);
-        scrollBarY.setVisible(true);
+        scrollBarY.setVisible(false);
         add(scrollBarY);
         scrollBarX = new Scrollbar(Scrollbar.HORIZONTAL, 1, 0, 0, 51);
         scrollBarX.setBlockIncrement(1);
@@ -124,15 +124,16 @@ class GMWindow extends ImageWindow implements AdjustmentListener
 		FloatProcessor Iy = (FloatProcessor)tmpProcessor.duplicate();
 		MyConvolve(Iy, H_yd1, 1, H_yd1.length);
 		MyConvolve(Ix, H_xd1, H_xd1.length, 1);
-		float[] Apix = (float[])Ix.getPixels();
-		float[] Bpix = (float[])Iy.getPixels();
+
 		for (int y = 0; y < Ix.getHeight(); y++)
 		{
 			for (int x = 0; x < Iy.getWidth(); x++)
 			{
-				float v = Apix[y*Ix.getWidth()+x]+Bpix[y*Ix.getWidth()+x];
-				float v0 = (float) Math.sqrt(v);
-				tmpProcessor.putPixelValue(x, y, 20*v0);
+				int v = (int)(Math.abs(Ix.getPixelValue(x, y))+Math.abs(Iy.getPixelValue(x, y)));
+				v *= 30;
+				if(v > 255)
+					v = 255;
+				tmpProcessor.putPixelValue(x, y, v);
 			}
 		}
 		processingImg.setProcessor(tmpProcessor.duplicate());
@@ -146,19 +147,21 @@ class GMWindow extends ImageWindow implements AdjustmentListener
 		
 		if (e.getSource() == scrollBarX)
 		{
-			this.setImage(processingImg);
 			sigma_x = (double)e.getValue()/scale;
-			String title = "sigma= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
+			sigma_y = sigma_x;
+			String title = "sigma x= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
 			ProcessImage();
+			this.setImage(processingImg);
+			this.update(this.getGraphics());
 			super.ic.repaint();
 			setTitle(title);
 			pack();
 		}
 		else if (e.getSource() == scrollBarY)
 		{
-			this.setImage(processingImg);
 			sigma_y = (double)e.getValue()/scale;
 			String title = "sigma= "+Double.toString(sigma_x)+", sigma y= "+Double.toString(sigma_y);
+			this.setImage(processingImg);
 			ProcessImage();
 			super.ic.repaint();
 			setTitle(title);
