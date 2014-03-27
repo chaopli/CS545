@@ -67,7 +67,10 @@ class HarrisCornerDetector {
 	FloatProcessor C;
 	FloatProcessor Q;
 	List<Corner> corners;
-	
+	void SetThreshold(int t)
+	{
+		this.threshold = t;
+	}
 	HarrisCornerDetector (ImageProcessor ip) {
 		this.ipOrig = ip;
 	}
@@ -245,6 +248,47 @@ class HarrisCornerDetector {
 					cp > pix[i2] && cp > pix[i2+1];
 		}
 	}
+	
+	float GetContrast(ImageProcessor ip){
+		float contrast = 0;
+		float c = 0;
+		
+		int w = ip.getWidth();
+		int h = ip.getHeight();
+		
+		
+		
+		for(int i = 0 ; i < w; i ++)
+			for(int j =0; j < h; j ++){
+				int a,b;
+				if(i != 0){
+					a = ip.getPixel(i, j);
+					b = ip.getPixel(i-1, j);
+					c = c+(float)((a - b) * (a - b));
+				}
+					
+				if(i != w-1){
+					a = ip.getPixel(i, j);
+					b = ip.getPixel(i+1, j);
+					c = c+(float)((a - b) * (a - b));
+				}
+				
+				if(j != 0){
+					a = ip.getPixel(i, j);
+					b = ip.getPixel(i, j-1);
+					c = c+(float)((a - b) * (a - b));
+				}
+				
+				if(j != h - 1){
+					a = ip.getPixel(i, j+1);
+					b = ip.getPixel(i, j+1);
+					c = c+(float)((a - b) * (a - b));
+				}
+			}
+		
+		contrast = c * 1.0f /(4*(w-2)*(h-2)+2*(w-2)*3+2*(h-2)*3+4*2);
+		return contrast;
+	}
 } // end of class HarrisCornerDetector
 
 
@@ -255,7 +299,13 @@ public class modified_harris_detector implements PlugInFilter {
 	public void run(ImageProcessor ip) {
 		// TODO Auto-generated method stub
 		HarrisCornerDetector hcd = new HarrisCornerDetector(ip);
-		hcd.findCorners();ImageProcessor result = hcd.showCornerPoints(ip);
+		float contrast = hcd.GetContrast(ip);
+		if(contrast > 30)
+			hcd.SetThreshold(300000);
+		else if (contrast < 5 )
+			hcd.SetThreshold(10000);
+		hcd.findCorners();
+		ImageProcessor result = hcd.showCornerPoints(ip);
 		ImagePlus win = new ImagePlus("Corners", result);
 		win.show();
 	}

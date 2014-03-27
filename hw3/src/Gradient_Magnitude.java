@@ -9,6 +9,7 @@ import ij.ImagePlus;
 import ij.gui.ImageWindow;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.Blitter;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
 public class Gradient_Magnitude implements PlugInFilter {
@@ -117,11 +118,24 @@ class GMWindow extends ImageWindow implements AdjustmentListener
 		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
 		
 		
-		float[] H_xd1 = MakeGaussKernel1dd1(sigma_x);
-		float[] H_yd1 = MakeGaussKernel1dd1(sigma_y);
-		MyConvolve(tmpProcessor, H_yd1, 1, H_y.length);
-		MyConvolve(tmpProcessor, H_xd1, H_xd1.length, 1);
-		processingImg.setProcessor(tmpProcessor);
+		float[] H_xd1 = {-0.5f, 0, 0.5f};// MakeGaussKernel1dd2(sigma_x);
+		float[] H_yd1 = {-0.5f, 0, 0.5f}; // MakeGaussKernel1dd2(sigma_y);
+		FloatProcessor Ix = (FloatProcessor)tmpProcessor.duplicate();
+		FloatProcessor Iy = (FloatProcessor)tmpProcessor.duplicate();
+		MyConvolve(Iy, H_yd1, 1, H_yd1.length);
+		MyConvolve(Ix, H_xd1, H_xd1.length, 1);
+		float[] Apix = (float[])Ix.getPixels();
+		float[] Bpix = (float[])Iy.getPixels();
+		for (int y = 0; y < Ix.getHeight(); y++)
+		{
+			for (int x = 0; x < Iy.getWidth(); x++)
+			{
+				float v = Apix[y*Ix.getWidth()+x]+Bpix[y*Ix.getWidth()+x];
+				float v0 = (float) Math.sqrt(v);
+				tmpProcessor.putPixelValue(x, y, 20*v0);
+			}
+		}
+		processingImg.setProcessor(tmpProcessor.duplicate());
 		return processingImg;
 	}
 	

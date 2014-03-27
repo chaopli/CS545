@@ -12,9 +12,9 @@ import ij.process.Blitter;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
-public class Laplacian_ implements PlugInFilter {
+public class Laplacian_Edge_Detection implements PlugInFilter {
 
-	LapLacian_Window m_window;
+	LEDWindow m_window;
 	@Override
 	public void run(ImageProcessor ip) {
 		// TODO Auto-generated method stub
@@ -30,7 +30,7 @@ public class Laplacian_ implements PlugInFilter {
 		}
 		resizedImageProcessor = resizedImageProcessor.duplicate();
 		resizedImage.setProcessor(resizedImageProcessor);
-		m_window = new LapLacian_Window(resizedImage);
+		m_window = new LEDWindow(resizedImage);
 	}
 
 	@Override
@@ -42,7 +42,7 @@ public class Laplacian_ implements PlugInFilter {
 }
 
 
-class LapLacian_Window extends ImageWindow implements AdjustmentListener
+class LEDWindow extends ImageWindow implements AdjustmentListener
 {
 	double sigma_x;
 	double sigma_y;
@@ -55,7 +55,7 @@ class LapLacian_Window extends ImageWindow implements AdjustmentListener
 	private ImagePlus originImg;
 	private double scale;
 
-	public LapLacian_Window(ImagePlus imp) {
+	public LEDWindow(ImagePlus imp) {
 		super(imp);
 		magnification = super.ic.getMagnification();
 		originImg = imp.duplicate();
@@ -112,18 +112,17 @@ class LapLacian_Window extends ImageWindow implements AdjustmentListener
 
 		float[] H_x = MakeGaussKernel1d(sigma_x);
 		float[] H_y = MakeGaussKernel1d(sigma_y);
-		FloatProcessor tmpProcessor = (FloatProcessor)processingProcessor.duplicate();
+		ImageProcessor tmpProcessor = processingProcessor.duplicate();
 		
 		MyConvolve(tmpProcessor, H_y, 1, H_y.length);	// In here involves the Wrap Method
 		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
 		
-		
-		float[] H_xd2 = {1, -2, 1};// MakeGaussKernel1dd2(sigma_x);
-		float[] H_yd2 = {1, -2, 1}; // MakeGaussKernel1dd2(sigma_y);
+		float[] H_xd1 = {-0.5f, 0, 0.5f};// MakeGaussKernel1dd2(sigma_x);
+		float[] H_yd1 = {-0.5f, 0, 0.5f}; // MakeGaussKernel1dd2(sigma_y);
 		FloatProcessor Ix = (FloatProcessor)tmpProcessor.duplicate();
 		FloatProcessor Iy = (FloatProcessor)tmpProcessor.duplicate();
-		MyConvolve(Iy, H_yd2, 1, H_yd2.length);
-		MyConvolve(Ix, H_xd2, H_xd2.length, 1);
+		MyConvolve(Iy, H_yd1, 1, H_yd1.length);
+		MyConvolve(Ix, H_xd1, H_xd1.length, 1);
 		float[] Apix = (float[])Ix.getPixels();
 		float[] Bpix = (float[])Iy.getPixels();
 		for (int y = 0; y < Ix.getHeight(); y++)
@@ -131,12 +130,74 @@ class LapLacian_Window extends ImageWindow implements AdjustmentListener
 			for (int x = 0; x < Iy.getWidth(); x++)
 			{
 				float v = Apix[y*Ix.getWidth()+x]+Bpix[y*Ix.getWidth()+x];
-				if(v < 0) v = 0;
-				if(v > 255) v = 255;
-				tmpProcessor.putPixelValue(x, y, 20*v);
+				float v0 = (float) Math.sqrt(v);
+				v0 *= 10;
+				if (v0 >= 10)
+					v0 = 255;
+				else
+					v0 = 0;
+				tmpProcessor.putPixelValue(x, y, v0);
 			}
 		}
-		processingImg.setProcessor(tmpProcessor.duplicate());
+		
+		processingImg = originImg.duplicate();
+		FloatProcessor processingProcessor1 = (FloatProcessor) processingImg.getProcessor().convertToFloat();
+
+		FloatProcessor tmpProcessor1 = (FloatProcessor) processingProcessor1.duplicate();
+		
+		MyConvolve(tmpProcessor1, H_y, 1, H_y.length);	// In here involves the Wrap Method
+		MyConvolve(tmpProcessor1, H_x, H_x.length, 1);
+		
+		
+		float[] H_xd2 = {1, -2, 1};// MakeGaussKernel1dd2(sigma_x);
+		float[] H_yd2 = {1, -2, 1}; // MakeGaussKernel1dd2(sigma_y);
+		Ix = (FloatProcessor) tmpProcessor1.duplicate();
+		Iy = (FloatProcessor) tmpProcessor1.duplicate();
+		MyConvolve(Iy, H_yd2, 1, H_yd2.length);
+		MyConvolve(Ix, H_xd2, H_xd2.length, 1);
+		
+		Apix = (float[])Ix.getPixels(); 
+		Bpix = (float[])Iy.getPixels();
+		int mw = Ix.getWidth();
+		int mh = Ix.getHeight();
+		for (int y = 0; y < mh; y++)
+		{
+			for (int x = 0; x < mw; x++)
+			{
+				int i = y*mw+x;
+				float a = Apix[i], b = Bpix[i];
+				
+				float v = a+b;
+				
+				if (v < 10 && v > -10) 
+				{
+					tmpProcessor1.putPixelValue(x, y, 0);
+				}
+				else 
+				{
+					tmpProcessor1.putPixelValue(x, y, 255);
+				}
+			}
+		}
+		
+		ImagePlus i1 = new ImagePlus("i1", tmpProcessor);
+		ImagePlus i2 = new ImagePlus("i2", tmpProcessor1);
+
+		ImageProcessor tmpp = originImg.getProcessor().duplicate();
+		for (int y = 0; y < Ix.getHeight(); y++)
+		{
+			for (int x = 0; x < Ix.getWidth(); x++)
+			{
+				float v1 = tmpProcessor1.getPixelValue(x, y);
+				float v2 = tmpProcessor.getPixelValue(x, y);
+				if (v1 == 255.0f && v2 == 255.0f)
+					tmpp.putPixelValue(x, y, v1);
+				else
+					tmpp.putPixel(x, y, 0);
+			}
+		}
+
+		processingImg.setProcessor(tmpp.duplicate());
 		return processingImg;
 	}
 	

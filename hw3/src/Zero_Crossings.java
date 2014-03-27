@@ -9,6 +9,7 @@ import ij.ImagePlus;
 import ij.gui.ImageWindow;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.Blitter;
+import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
 public class Zero_Crossings implements PlugInFilter {
@@ -107,40 +108,47 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 	public ImagePlus ProcessImage()
 	{
 		processingImg = originImg.duplicate();
-		ImageProcessor processingProcessor = processingImg.getProcessor().convertToFloat();
-//
-//		float[] H_x = MakeGaussKernel1d(sigma_x);
-//		float[] H_y = MakeGaussKernel1d(sigma_y);
-		ImageProcessor tmpProcessor = processingProcessor.duplicate();
-//		
-//		MyConvolve(tmpProcessor, H_y, 1, H_y.length);	// In here involves the Wrap Method
-//		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
+		FloatProcessor processingProcessor = (FloatProcessor) processingImg.getProcessor().convertToFloat();
+
+		float[] H_x = MakeGaussKernel1d(sigma_x);
+		float[] H_y = MakeGaussKernel1d(sigma_y);
+		FloatProcessor tmpProcessor = (FloatProcessor) processingProcessor.duplicate();
+		
+		MyConvolve(tmpProcessor, H_y, 1, H_y.length);	// In here involves the Wrap Method
+		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
 		
 		
-		float[] H_xd2 = MakeGaussKernel1dd2(sigma_x);
-		float[] H_yd2 = MakeGaussKernel1dd2(sigma_y);
-		MyConvolve(tmpProcessor, H_yd2, 1, H_yd2.length);
-		MyConvolve(tmpProcessor, H_xd2, H_xd2.length, 1);
+		float[] H_xd2 = {1, -2, 1};// MakeGaussKernel1dd2(sigma_x);
+		float[] H_yd2 = {1, -2, 1}; // MakeGaussKernel1dd2(sigma_y);
+		FloatProcessor Ix = (FloatProcessor) tmpProcessor.duplicate();
+		FloatProcessor Iy = (FloatProcessor) tmpProcessor.duplicate();
+		MyConvolve(Iy, H_yd2, 1, H_yd2.length);
+		MyConvolve(Ix, H_xd2, H_xd2.length, 1);
 		
-		int w = tmpProcessor.getWidth();
-		int h = tmpProcessor.getHeight();
-		for (int x = 0; x < w; x++)
+		float[] Apix = (float[])Ix.getPixels(); 
+		float[] Bpix = (float[])Iy.getPixels();
+		int mw = Ix.getWidth();
+		int mh = Ix.getHeight();
+		for (int y = 0; y < mh; y++)
 		{
-			for (int y = 0; y < h; y++)
+			for (int x = 0; x < mw; x++)
 			{
-				float v = tmpProcessor.getPixel(x, y);
+				int i = y*mw+x;
+				float a = Apix[i], b = Bpix[i];
 				
-				if (v > -1000000000 && v < 1000000000) 
+				float v = a+b;
+				
+				if (v < 10 && v > -10) 
 				{
-					tmpProcessor.putPixel(x, y, 255);
+					tmpProcessor.putPixelValue(x, y, 255);
 				}
 				else 
 				{
-					tmpProcessor.putPixel(x, y, 0);
+					tmpProcessor.putPixelValue(x, y, 0);
 				}
 			}
 		}
-		processingImg.setProcessor(tmpProcessor);
+		processingImg.setProcessor(tmpProcessor.duplicate());
 		return processingImg;
 	}
 	
