@@ -131,8 +131,9 @@ class ZCWindow extends ImageWindow implements AdjustmentListener
 		{
 			for (int x = 0; x < mw; x++)
 			{
-				int v = (int)(Ix.getPixelValue(x, y)+Iy.getPixelValue(x, y));
-				if (v == 0) 
+				int vl = (int)(Ix.getPixelValue(x-1, y)+Iy.getPixelValue(x-1, y));
+				int vr = (int)(Ix.getPixelValue(x+1, y)+Iy.getPixelValue(x+1, y));
+				if ((vl <= 0 && vr >= 0) || (vl >=0 && vr <= 0)) 
 				{
 					tmpProcessor.putPixelValue(x, y, 255);
 				}

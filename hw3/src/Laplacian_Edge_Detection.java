@@ -118,26 +118,26 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		MyConvolve(tmpProcessor, H_y, 1, H_y.length);	// In here involves the Wrap Method
 		MyConvolve(tmpProcessor, H_x, H_x.length, 1);
 		
-		float[] H_xd1 = {-0.5f, 0, 0.5f};// MakeGaussKernel1dd1(sigma_x);
-		float[] H_yd1 = {-0.5f, 0, 0.5f}; // MakeGaussKernel1dd1(sigma_y);
+//		float[] H_xd1 = {-0.5f, 0, 0.5f};// MakeGaussKernel1dd1(sigma_x);
+//		float[] H_yd1 = {-0.5f, 0, 0.5f}; // MakeGaussKernel1dd1(sigma_y);
 		FloatProcessor Ix = (FloatProcessor)tmpProcessor.duplicate();
 		FloatProcessor Iy = (FloatProcessor)tmpProcessor.duplicate();
-		MyConvolve(Iy, H_yd1, 1, H_yd1.length);
-		MyConvolve(Ix, H_xd1, H_xd1.length, 1);
-
-		for (int y = 0; y < Ix.getHeight(); y++)
-		{
-			for (int x = 0; x < Iy.getWidth(); x++)
-			{
-				float v = Math.abs(Ix.getPixelValue(x, y))+Math.abs(Iy.getPixelValue(x, y));
-				if (v >= threshold)
-					v = 255;
-				else
-					v = 0;
-				tmpProcessor.putPixelValue(x, y, v);
-			}
-		}
-		
+//		MyConvolve(Iy, H_yd1, 1, H_yd1.length);
+//		MyConvolve(Ix, H_xd1, H_xd1.length, 1);
+//
+//		for (int y = 0; y < Ix.getHeight(); y++)
+//		{
+//			for (int x = 0; x < Iy.getWidth(); x++)
+//			{
+//				float v = Math.abs(Ix.getPixelValue(x, y))+Math.abs(Iy.getPixelValue(x, y));
+//				if (v >= threshold)
+//					v = 255;
+//				else
+//					v = 0;
+//				tmpProcessor.putPixelValue(x, y, v);
+//			}
+//		}
+//		
 		processingImg = originImg.duplicate();
 		FloatProcessor processingProcessor1 = (FloatProcessor) processingImg.getProcessor().convertToFloat();
 		
@@ -162,16 +162,15 @@ class LEDWindow extends ImageWindow implements AdjustmentListener
 		{
 			for (int x = 0; x < mw; x++)
 			{
-				float a = Ix.getPixelValue(x, y), b = Iy.getPixelValue(x, y);
-				int v = (int)(a+b);
-				
-				if (v == 0) 
+				int vl = (int)(Ix.getPixelValue(x-1, y)+Iy.getPixelValue(x-1, y));
+				int vr = (int)(Ix.getPixelValue(x+1, y)+Iy.getPixelValue(x+1, y));
+				if ((vl <= 0 && vr >= 0) || (vl >=0 && vr <= 0)) 
 				{
-					tmpProcessor1.putPixelValue(x, y, 0);
+					tmpProcessor.putPixelValue(x, y, 255);
 				}
 				else 
 				{
-					tmpProcessor1.putPixelValue(x, y, 255);
+					tmpProcessor1.putPixelValue(x, y, 0);
 				}
 			}
 		}
