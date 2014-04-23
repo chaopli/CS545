@@ -1,13 +1,6 @@
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.geom.Ellipse2D;
 import java.util.Stack;
 import java.util.Vector;
-
 import ij.ImagePlus;
-import ij.gui.ImageWindow;
 import ij.plugin.filter.PlugInFilter;
 import ij.process.ImageProcessor;
 
@@ -100,13 +93,11 @@ public class Region_labeling implements PlugInFilter {
 //		 new ImagePlus("222", ip).show();
 		 if (num != 0)
 		 {
-			 
 			 centroidx = sumx/num;
 			 centroidy = sumy/num;
 			 Node n = new Node(centroidx, centroidy);
 			 centroid.addElement(n);
 		 }
-		 
 	}
 	
 	public void CalcOrientationVector(int u, int v, int lable, int index)
